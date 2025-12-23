@@ -134,3 +134,84 @@ body {
 .animate-bounce-x {
   animation: bounce-x 1s infinite;
 }
+
+/* ASCII Art Floating Animation */
+@keyframes ascii-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+.animate-ascii-float {
+  animation: ascii-float 4s ease-in-out infinite;
+}
+
+/* ASCII Art Glow Pulse */
+@keyframes ascii-glow {
+  0%, 100% {
+    text-shadow: 0 0 5px #00FF00, 0 0 10px #00FF00;
+    opacity: 1;
+  }
+  50% {
+    text-shadow: 0 0 15px #00FF00, 0 0 25px #00FF00, 0 0 35px #00FFFF;
+    opacity: 0.95;
+  }
+}
+.animate-ascii-glow {
+  animation: ascii-glow 3s ease-in-out infinite;
+}
+
+/* ASCII Art Rotate (subtle) */
+@keyframes ascii-rotate {
+  0%, 100% {
+    transform: perspective(1000px) rotateX(0deg) rotateY(-5deg);
+  }
+  50% {
+    transform: perspective(1000px) rotateX(5deg) rotateY(5deg);
+  }
+}
+.animate-ascii-rotate {
+  animation: ascii-rotate 5s ease-in-out infinite;
+}
+
+/* ASCII Art Scan Lines Animation */
+@keyframes ascii-scan {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 10px;
+  }
+}
+.ascii-scanline {
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 255, 0, 0.1) 0px,
+    rgba(0, 255, 0, 0.1) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  animation: ascii-scan 0.15s linear infinite;
+}
+
+/* ASCII Shimmer Effect */
+@keyframes ascii-shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+.ascii-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 255, 0, 0.3) 50%,
+    transparent 100%
+  );
+  background-size: 1000px 100%;
+  animation: ascii-shimmer 3s infinite;
+}

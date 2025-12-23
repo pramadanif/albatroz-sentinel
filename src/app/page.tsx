@@ -7,6 +7,7 @@ import Specs from './components/Specs';
 import EnhancedModules from './components/EnhancedModules';
 import ComparisonTable from './components/ComparisonTable';
 import FinalVerdict from './components/FinalVerdict';
+import Dashboard from './components/Dashboard/Dashboard';
 import Footer from './components/Footer';
 
 export default function Home() {
@@ -18,6 +19,7 @@ export default function Home() {
         <Terminal />
         <Features />
         <Specs />
+        {/* <Dashboard /> */}
         <EnhancedModules />
         <ComparisonTable />
         <FinalVerdict />
