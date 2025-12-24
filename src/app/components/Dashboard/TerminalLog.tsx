@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useContractData, useContractEvents } from '../../hooks/useContractData';
 
 interface LogEntry {
   id: number;
@@ -10,43 +11,53 @@ interface LogEntry {
 }
 
 const TerminalLog: React.FC = () => {
-  const [logs, setLogs] = useState<LogEntry[]>([
-    { id: 1, timestamp: '14:02:01', message: 'SCANNING POOLS...', type: 'info' },
-    { id: 2, timestamp: '14:02:05', message: 'DETECTED: POOL_B YIELD SPIKE (+2.75%)', type: 'success' },
-    { id: 3, timestamp: '14:02:06', message: 'ANALYSIS: PROFIT > GAS_COST (0.85% GAP)', type: 'success' },
-    { id: 4, timestamp: '14:02:10', message: 'SENTINEL DECISION: INITIATE_REBALANCE', type: 'decision' },
-    { id: 5, timestamp: '14:02:15', message: 'CALLBACK_SENT TO LASNA...', type: 'info' },
-    { id: 6, timestamp: '14:02:20', message: 'REBALANCE_COMPLETE: 1000 USDC MOVED', type: 'success' },
-  ]);
-
+  const { poolA, poolB } = useContractData();
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [strategy, setStrategy] = useState<'conservative' | 'aggressive'>('conservative');
+  const [mounted, setMounted] = useState(false);
 
-  // Simulate new logs
+  // Initialize logs only on client side to avoid hydration mismatch
   useEffect(() => {
-    const interval = setInterval(() => {
-      const messages = [
-        'SCANNING POOLS...',
-        'YIELD UPDATE: POOL_A +0.05%',
-        'YIELD UPDATE: POOL_B +0.08%',
-        'PROFIT CALCULATION IN PROGRESS...',
-        'GAS COST ESTIMATE: 12 GWEI',
-        'EXECUTING REBALANCE LOGIC...',
-      ];
-      
-      const types: Array<LogEntry['type']> = ['info', 'success', 'warning', 'info'];
-      const randomMsg = messages[Math.floor(Math.random() * messages.length)];
-      const randomType = types[Math.floor(Math.random() * types.length)];
-      
-      const now = new Date();
-      const timeString = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-      
-      setLogs(prev => [
-        ...prev.slice(-9),
-        { id: Date.now(), timestamp: timeString, message: randomMsg, type: randomType }
-      ]);
-    }, 3000);
+    setMounted(true);
+    setLogs([
+      { id: 1, timestamp: new Date().toLocaleTimeString(), message: 'SYSTEM_INITIALIZED', type: 'success' },
+      { id: 2, timestamp: new Date().toLocaleTimeString(), message: 'LISTENING_TO_POOL_EVENTS...', type: 'info' },
+    ]);
+  }, []);
 
-    return () => clearInterval(interval);
+  // Listen for contract events
+  useContractEvents((type, data) => {
+    if (!mounted) return;
+    const now = new Date();
+    const timeString = now.toLocaleTimeString();
+    
+    let message = '';
+    let logType: LogEntry['type'] = 'info';
+
+    if (type === 'RATE_UPDATE') {
+        message = `RATE_UPDATE: POOL_${data.pool} | RATE=${data.rate} bps | UTIL=${data.util} bps`;
+        logType = 'success';
+    } else if (type === 'STRATEGY_EXECUTION') {
+        message = `STRATEGY_EXECUTED: ${data.reason} | MOVED ${Number(data.amount).toFixed(2)} USDC`;
+        logType = 'decision';
+    }
+
+    if (message) {
+        setLogs(prev => [
+          ...prev.slice(-9),
+          { 
+            id: Date.now(), 
+            timestamp: timeString, 
+            message, 
+            type: logType
+          }
+        ]);
+    }
+  });
+
+  // Removed simulation logic to ensure all data is real
+  useEffect(() => {
+    // This effect is intentionally empty as we only listen to real events now
   }, []);
 
   const getLogColor = (type: LogEntry['type']) => {
@@ -66,17 +77,35 @@ const TerminalLog: React.FC = () => {
       <div className="p-4 border-b border-[#333333] bg-[#111111] flex justify-between items-center">
         <div>
           <div className="text-[#00FFFF] text-xs font-bold tracking-wider">INTELLIGENCE_TERMINAL</div>
-          <div className="text-[10px] text-[#666] mt-1">Decision Log</div>
+          <div className="text-[10px] text-[#666] mt-1">Reactive Event Stream</div>
         </div>
-        <div className="text-xs text-[#00FFFF] animate-pulse">● LIVE</div>
+        <div className="text-xs text-[#00FF00] animate-pulse font-mono">
+          {poolA && poolB ? '● LIVE' : '○ SYNCING'}
+        </div>
       </div>
+
+      {/* Pool Status */}
+      {poolA && poolB && (
+        <div className="border-b border-[#333333] bg-[#050505]/50 px-4 py-3 text-[10px] font-mono grid grid-cols-2 gap-4">
+          <div>
+            <span className="text-[#666]">POOL_A:</span>
+            <span className="text-[#00FFFF] ml-2">{poolA.supplyRate} bps</span>
+            <span className="text-[#999] ml-2">util={poolA.utilizationRate} bps</span>
+          </div>
+          <div>
+            <span className="text-[#666]">POOL_B:</span>
+            <span className="text-[#FFB100] ml-2">{poolB.supplyRate} bps</span>
+            <span className="text-[#999] ml-2">util={poolB.utilizationRate} bps</span>
+          </div>
+        </div>
+      )}
 
       {/* Terminal Logs */}
       <div className="flex-1 overflow-y-auto p-4 font-mono text-xs space-y-2 bg-[#050505]/50">
         {logs.map((log) => (
           <div key={log.id} className="flex gap-3 hover:bg-[#111111] p-2 transition-colors">
             <span className="text-[#666] flex-shrink-0">[{log.timestamp}]</span>
-            <span className={`${getLogColor(log.type)} flex-1`}>
+            <span className={`${getLogColor(log.type)} flex-1 break-words`}>
               {log.type === 'decision' ? '→ ' : '> '}
               {log.message}
             </span>
