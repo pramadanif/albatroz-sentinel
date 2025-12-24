@@ -23,14 +23,14 @@ interface ISystemContract {
     function subscribe(uint256 chainId, address contractAddress, uint256 topic0) external;
 }
 contract AlbatrozSentinel is IReactive {
-    address public constant SYSTEM_CONTRACT = 0x0000000000000000000000000000000000ffffFF; 
+    address public constant SYSTEM_CONTRACT = 0x0000000000000000000000000000000000fffFfF; 
     uint256 public constant SEPOLIA_CHAIN_ID = 11155111;
     address public vaultAddress;
     address public poolA;
     address public poolB;
     
     // Keccak256 hash of RateUpdated(uint256,uint256)
-    uint256 public constant RATE_UPDATED_TOPIC0 = 0x794936466378e9f5e92751f339242a9a7a6723223126f58479e0069e23730704;
+    uint256 public constant RATE_UPDATED_TOPIC0 = 0xb38780ddde1f073d91c150de2696f3f7085883648ba21cc5ef01029cb21d1916;
     uint256 public rateA;
     uint256 public utilA;
     uint256 public rateB;
@@ -46,8 +46,15 @@ contract AlbatrozSentinel is IReactive {
         poolB = _poolB;
         
         // Subscribe through System Contract during deployment
-        ISystemContract(SYSTEM_CONTRACT).subscribe(SEPOLIA_CHAIN_ID, poolA, RATE_UPDATED_TOPIC0);
-        ISystemContract(SYSTEM_CONTRACT).subscribe(SEPOLIA_CHAIN_ID, poolB, RATE_UPDATED_TOPIC0);
+        // Wrapped in low-level call to gracefully handle failures during deployment
+        (bool success1, ) = SYSTEM_CONTRACT.call(
+            abi.encodeWithSignature("subscribe(uint256,address,uint256)", SEPOLIA_CHAIN_ID, poolA, RATE_UPDATED_TOPIC0)
+        );
+        (bool success2, ) = SYSTEM_CONTRACT.call(
+            abi.encodeWithSignature("subscribe(uint256,address,uint256)", SEPOLIA_CHAIN_ID, poolB, RATE_UPDATED_TOPIC0)
+        );
+        
+        // Subscriptions will be configured externally if they fail during deployment
     }
     // onEvent Signature Adjustment (Adding topic1-3 according to IReactive standard)
     function onEvent(

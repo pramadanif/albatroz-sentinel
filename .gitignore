@@ -44,3 +44,8 @@ contracts/sepolia/broadcast
 contracts/sepolia/cache
 contracts/sepolia/lib/openszeppelin-contracts
 contracts/sepolia/out
+
+reactivelasnacontract/broadcast
+reactivelasnacontract/cache
+reactivelasnacontract/lib
+reactivelasnacontract/out
