@@ -1,5 +1,22 @@
+Compiling 2 files with Solc 0.8.19
+Solc 0.8.19 finished in 375.70ms
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> AlbatrozSentinel.sol:51:9:
+   |
+51 |         uint256 chainId,
+   |         ^^^^^^^^^^^^^^^
+
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> AlbatrozSentinel.sol:53:9:
+   |
+53 |         uint256 topic0,
+   |         ^^^^^^^^^^^^^^
+
+Script ran successfully.
+
 == Logs ==
-  AlbatrozSentinel deployed at: 0x93dBc50500C7817eEFFA29E44750D388687D19F4
+  AlbatrozSentinel deployed at: 0x875507ef1fE7b067eAFea09BddFF193c30f1D21B
   Vault Address: 0xB7c78ceCB25a1c40b3fa3382bAf3F34c9b5bdD66
   Pool A Address: 0x46eE74Bf6D3c6b06483Ec4BF4066a8117Fa8Cb47
   Pool B Address: 0xBE2bcf983b84c030b0C851989aDF351816fA21D2
@@ -12,9 +29,9 @@ Chain 5318007
 
 Estimated gas price: 212 gwei
 
-Estimated total gas used for script: 594499
+Estimated total gas used for script: 571443
 
-Estimated amount required: 0.126033788 ETH
+Estimated amount required: 0.121145916 ETH
 
 ==========================
 

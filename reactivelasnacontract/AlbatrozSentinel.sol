@@ -20,7 +20,7 @@ interface IReactive {
 }
 // Recommendation: Use ISystemContract only for subscription in constructor
 interface ISystemContract {
-    function subscribe(uint256 chainId, address contractAddress, uint256 topic0) external;
+    function subscribe(uint256 chainId, address contractAddress, uint256 topic0) external payable;
 }
 contract AlbatrozSentinel is IReactive {
     address public constant SYSTEM_CONTRACT = 0x0000000000000000000000000000000000fffFfF; 
@@ -44,17 +44,7 @@ contract AlbatrozSentinel is IReactive {
         vaultAddress = _vault;
         poolA = _poolA;
         poolB = _poolB;
-        
-        // Subscribe through System Contract during deployment
-        // Wrapped in low-level call to gracefully handle failures during deployment
-        (bool success1, ) = SYSTEM_CONTRACT.call(
-            abi.encodeWithSignature("subscribe(uint256,address,uint256)", SEPOLIA_CHAIN_ID, poolA, RATE_UPDATED_TOPIC0)
-        );
-        (bool success2, ) = SYSTEM_CONTRACT.call(
-            abi.encodeWithSignature("subscribe(uint256,address,uint256)", SEPOLIA_CHAIN_ID, poolB, RATE_UPDATED_TOPIC0)
-        );
-        
-        // Subscriptions will be configured externally if they fail during deployment
+        // Subscriptions will be configured via owner admin call or manually
     }
     // onEvent Signature Adjustment (Adding topic1-3 according to IReactive standard)
     function onEvent(

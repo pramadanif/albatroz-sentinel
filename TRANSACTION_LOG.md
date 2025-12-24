@@ -189,6 +189,19 @@ This topic is monitored by the AlbatrozSentinel contract on the Reactive Network
 
 ---
 
+## ⛓️ Step 3: Cross-Chain Callback (Destination)
+
+Setelah Reactive Network mendeteksi ketimpangan yield (Score B > Score A + 200), Sentinel mengirimkan callback otomatis ke Sepolia.
+
+| Field | Value |
+|-------|-------|
+| **Reactive Execution Hash** | `[PENDING_REACTIVE_TX_HASH]` |
+| **Sepolia Callback Hash** | `[PENDING_SEPOLIA_CALLBACK_HASH]` |
+| **Function Called** | `rebalance(poolA, poolB, 1000*10^6, 990*10^6)` |
+| **Result** | 🚀 Liquidity successfully migrated from Pool A to Pool B |
+
+---
+
 ## 🎯 Next Observations
 
 ### What to Monitor
