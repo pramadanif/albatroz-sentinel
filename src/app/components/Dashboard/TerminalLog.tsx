@@ -15,6 +15,8 @@ const TerminalLog: React.FC = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [strategy, setStrategy] = useState<'conservative' | 'aggressive'>('conservative');
   const [mounted, setMounted] = useState(false);
+  const [autoScroll, setAutoScroll] = useState(true);
+  const logsEndRef = React.useRef<HTMLDivElement>(null);
 
   // Initialize logs only on client side to avoid hydration mismatch
   useEffect(() => {
@@ -24,6 +26,13 @@ const TerminalLog: React.FC = () => {
       { id: 2, timestamp: new Date().toLocaleTimeString(), message: 'LISTENING_TO_POOL_EVENTS...', type: 'info' },
     ]);
   }, []);
+
+  // Auto-scroll to latest log
+  useEffect(() => {
+    if (autoScroll) {
+      logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs, autoScroll]);
 
   // Listen for contract events
   useContractEvents((type, data) => {
@@ -101,16 +110,27 @@ const TerminalLog: React.FC = () => {
       )}
 
       {/* Terminal Logs */}
-      <div className="flex-1 overflow-y-auto p-4 font-mono text-xs space-y-2 bg-[#050505]/50">
-        {logs.map((log) => (
-          <div key={log.id} className="flex gap-3 hover:bg-[#111111] p-2 transition-colors">
+      <div 
+        className="flex-1 overflow-y-auto p-4 font-mono text-xs space-y-1 bg-[#050505]/50 scroll-smooth"
+        onMouseEnter={() => setAutoScroll(false)}
+        onMouseLeave={() => setAutoScroll(true)}
+      >
+        {logs.map((log, idx) => (
+          <div 
+            key={log.id} 
+            className="flex gap-3 hover:bg-[#111111] p-2 transition-all duration-300 animate-fadeIn"
+            style={{
+              animation: `fadeIn 0.3s ease-in ${idx * 0.05}s both`
+            }}
+          >
             <span className="text-[#666] flex-shrink-0">[{log.timestamp}]</span>
-            <span className={`${getLogColor(log.type)} flex-1 break-words`}>
-              {log.type === 'decision' ? '→ ' : '> '}
+            <span className={`${getLogColor(log.type)} flex-1 break-words font-mono`}>
+              {log.type === 'decision' ? '→ ' : '&gt; '}
               {log.message}
             </span>
           </div>
         ))}
+        <div ref={logsEndRef} />
       </div>
 
       {/* Strategy Toggle */}

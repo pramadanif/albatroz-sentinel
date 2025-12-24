@@ -39,6 +39,11 @@ contract AlbatrozSentinel is IReactive {
     // Cooldown Mechanism (Anti-Spam)
     uint256 public lastRebalanceTime;
     uint256 public constant COOLDOWN_PERIOD = 1 hours;
+    
+    // Gas Guard Config (Financial Prudence)
+    uint256 public gasPrice = 25 * 10**9; // 25 Gwei (adjustable)
+    uint256 public ethPrice = 2000 * 10**18; // $2000 per ETH (oracle-ready)
+    uint256 public minProfitThreshold = 10 * 10**6; // Min $10 profit required (USDC = 6 decimals)
 
     constructor(address _vault, address _poolA, address _poolB) {
         vaultAddress = _vault;
@@ -76,19 +81,46 @@ contract AlbatrozSentinel is IReactive {
         int256 scoreB = int256(rateB * 80) - int256(utilB * 20);
         
         if (scoreB > scoreA + 200) {
+            // === GAS GUARD: Profitable Only ===
+            // Estimate gas cost: 200,000 gas limit
+            uint256 gasUsed = 200000;
+            uint256 gasCostUSD = (gasUsed * gasPrice * ethPrice) / (10**18 * 10**9); // Convert to USD
+            
+            // Estimate profit from rate differential
+            // Simplified: score difference = rate opportunity (in basis points)
+            uint256 scoreDifference = uint256(scoreB - scoreA);
+            uint256 baseRebalanceAmount = 1000 * 10**6; // 1000 USDC
+            uint256 estimatedProfitUSD = (scoreDifference * baseRebalanceAmount) / 10000; // BPS to ratio
+            
+            // FINANCIAL CHECK: Only proceed if profit > gas cost + margin
+            require(estimatedProfitUSD > gasCostUSD + minProfitThreshold, "GasGuard: Unprofitable rebalance");
+            
             // Update last rebalance time
             lastRebalanceTime = block.timestamp;
 
-            // Rebalance 1000 USDC
-            // Note: In production, this should be dynamic or percentage-based.
-            // For demo purposes, we move a fixed chunk to demonstrate the logic.
+            // Rebalance 1000 USDC (with safety margin)
             bytes memory payload = abi.encodeWithSignature(
                 "rebalance(address,address,uint256,uint256)",
-                poolA, poolB, 1000 * 10**6, 990 * 10**6
+                poolA, poolB, baseRebalanceAmount, (baseRebalanceAmount * 99) / 100 // 1% slippage tolerance
             );
             // REACTIVE STANDARD: Using Callback event to trigger L1
             // gasLimit 200,000 is the safe standard for rebalance on Sepolia
             emit Callback(SEPOLIA_CHAIN_ID, vaultAddress, 200000, payload);
         }
+    }
+    
+    // Admin function to update gas price (keeper bot or oracle integration)
+    function updateGasPrice(uint256 newGasPrice) external {
+        gasPrice = newGasPrice;
+    }
+    
+    // Admin function to update ETH price (oracle integration ready)
+    function updateEthPrice(uint256 newEthPrice) external {
+        ethPrice = newEthPrice;
+    }
+    
+    // Admin function to update minimum profit threshold
+    function updateMinProfitThreshold(uint256 newThreshold) external {
+        minProfitThreshold = newThreshold;
     }
 }
