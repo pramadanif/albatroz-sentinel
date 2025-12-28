@@ -4,6 +4,8 @@ Albatroz lets you deploy a fully autonomous, cross-chain yield optimizer in a si
 
 Unlike traditional yield aggregators (Yearn, Aave Portal) that rely on **centralized off-chain keepers** (Gelato, Chainlink Automation) or **manual admin actions**, Albatroz uses **Reactive Smart Contracts** to eliminate the middleman. The network itself becomes the keeper.
 
+**The Killer Advantage:** Zero-touch autonomous rebalancing—your yield works 24/7 without bots, without monitoring, without your permission. Once deployed, Albatroz rebalances at $2/tx instead of $50-200, reaching optimal yields in <10 seconds instead of 1-5 minutes. Fire and forget.
+
 **Networks:**
 *   **Origin Chains (Vault & Pools):** Ethereum Sepolia
 *   **Reactive Logic:** Reactive Network (Lasna Testnet)
