@@ -5,7 +5,6 @@ import SystemMarquee from './SystemMarquee';
 import VaultStats from './VaultStats';
 import TerminalLog from './TerminalLog';
 import MarketManipulator from './MarketManipulator';
-import DataFlow from './DataFlow';
 
 const Dashboard: React.FC = () => {
   return (
@@ -32,11 +31,6 @@ const Dashboard: React.FC = () => {
           <div className="lg:col-span-4">
             <MarketManipulator />
           </div>
-        </div>
-
-        {/* Bottom Section: Data Flow */}
-        <div className="mb-6">
-          <DataFlow />
         </div>
 
         {/* Footer Note */}

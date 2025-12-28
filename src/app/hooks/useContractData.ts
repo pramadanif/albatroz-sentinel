@@ -14,11 +14,17 @@ const VAULT_ABI = [
   'function asset() public view returns (address)',
   'function convertToAssets(uint256 shares) public view returns (uint256)',
   'event StrategyExecuted(address fromPool, address toPool, uint256 amount, string reason)',
+  'event Deposit(address indexed sender, address indexed owner, uint256 assets, uint256 shares)',
+  'event Withdraw(address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares)'
 ];
 
 const USDC_ABI = [
   'function balanceOf(address) public view returns (uint256)',
   'function decimals() public view returns (uint8)',
+];
+
+const SENTINEL_ABI = [
+  'event Callback(uint256 indexed chainId, address indexed target, uint256 gasLimit, bytes payload)'
 ];
 
 // Contract Addresses (Sepolia)
@@ -164,22 +170,38 @@ export const useContractData = (userAddress?: string | null) => {
 };
 
 // Global event callbacks registry
-type EventCallback = (type: 'RATE_UPDATE' | 'STRATEGY_EXECUTION', data: any) => void;
+type EventCallback = (type: 'RATE_UPDATE' | 'STRATEGY_EXECUTION' | 'DEPOSIT' | 'WITHDRAW' | 'REACTIVE_CALLBACK', data: any) => void;
 const eventCallbacks = new Set<EventCallback>();
 
-// Hook for listening to blockchain events
-export const useContractEvents = (callback: EventCallback) => {
-  useEffect(() => {
-    eventCallbacks.add(callback);
+// Singleton Poller State
+let isPolling = false;
+let lastBlock = 0;
+let lastLasnaBlock = 0;
+let lastPoolA: PoolData | null = null;
+let lastPoolB: PoolData | null = null;
+let tokenDecimals = 18; // Default to 18, will be updated
+let decimalsFetched = false;
 
-    // Poll for rate changes and emit events
-    let lastPoolA: PoolData | null = null;
-    let lastPoolB: PoolData | null = null;
-    let lastBlock = 0;
+const startPolling = () => {
+    if (isPolling) return;
+    isPolling = true;
 
-    const pollInterval = setInterval(async () => {
+    // Sepolia Polling
+    setInterval(async () => {
       try {
         const provider = new ethers.JsonRpcProvider(SEPOLIA_RPC);
+        
+        // Fetch decimals once
+        if (!decimalsFetched) {
+            try {
+                const usdcContract = new ethers.Contract(USDC_ADDRESS, USDC_ABI, provider);
+                tokenDecimals = Number(await usdcContract.decimals());
+                decimalsFetched = true;
+            } catch (e) {
+                console.warn('Failed to fetch decimals in poller, using default 18', e);
+            }
+        }
+
         const currentBlock = await provider.getBlockNumber();
         
         if (lastBlock === 0) {
@@ -206,26 +228,56 @@ export const useContractEvents = (callback: EventCallback) => {
         }
         lastPoolB = { supplyRate: supplyRateB, utilizationRate: utilRateB };
 
-        // Listen for Vault StrategyExecuted events
+        // Listen for Vault Events
         const vaultContract = new ethers.Contract(VAULT_ADDRESS, VAULT_ABI, provider);
-        const filter = vaultContract.filters.StrategyExecuted();
         
-        // Query logs from lastBlock + 1 to currentBlock
         if (currentBlock > lastBlock) {
-            const events = await vaultContract.queryFilter(filter, lastBlock + 1, currentBlock);
-            
-            events.forEach((event: any) => {
+            // 1. StrategyExecuted
+            const eventsStrategy = await vaultContract.queryFilter(vaultContract.filters.StrategyExecuted(), lastBlock + 1, currentBlock);
+            eventsStrategy.forEach((event: any) => {
                 if (event.args) {
                     eventCallbacks.forEach(cb => cb('STRATEGY_EXECUTION', {
                         fromPool: event.args[0],
                         toPool: event.args[1],
-                        amount: ethers.formatUnits(event.args[2], 6), // Assuming USDC 6 decimals
+                        amount: ethers.formatUnits(event.args[2], tokenDecimals),
                         reason: event.args[3],
                         txHash: event.transactionHash,
                         timestamp: new Date().toLocaleTimeString()
                     }));
                 }
             });
+
+            // 2. Deposit
+            const eventsDeposit = await vaultContract.queryFilter(vaultContract.filters.Deposit(), lastBlock + 1, currentBlock);
+            eventsDeposit.forEach((event: any) => {
+                if (event.args) {
+                    eventCallbacks.forEach(cb => cb('DEPOSIT', {
+                        sender: event.args[0],
+                        owner: event.args[1],
+                        assets: ethers.formatUnits(event.args[2], tokenDecimals),
+                        shares: ethers.formatUnits(event.args[3], tokenDecimals),
+                        txHash: event.transactionHash,
+                        timestamp: new Date().toLocaleTimeString()
+                    }));
+                }
+            });
+
+            // 3. Withdraw
+            const eventsWithdraw = await vaultContract.queryFilter(vaultContract.filters.Withdraw(), lastBlock + 1, currentBlock);
+            eventsWithdraw.forEach((event: any) => {
+                if (event.args) {
+                    eventCallbacks.forEach(cb => cb('WITHDRAW', {
+                        sender: event.args[0],
+                        receiver: event.args[1],
+                        owner: event.args[2],
+                        assets: ethers.formatUnits(event.args[3], tokenDecimals),
+                        shares: ethers.formatUnits(event.args[4], tokenDecimals),
+                        txHash: event.transactionHash,
+                        timestamp: new Date().toLocaleTimeString()
+                    }));
+                }
+            });
+
             lastBlock = currentBlock;
         }
 
@@ -234,8 +286,52 @@ export const useContractEvents = (callback: EventCallback) => {
       }
     }, 5000);
 
+    // Lasna Polling
+    setInterval(async () => {
+        try {
+            const lasnaProvider = new ethers.JsonRpcProvider(LASNA_RPC);
+            const currentLasnaBlock = await lasnaProvider.getBlockNumber();
+            
+            if (lastLasnaBlock === 0) {
+                lastLasnaBlock = currentLasnaBlock - 50;
+            }
+
+            const sentinelContract = new ethers.Contract(SENTINEL_ADDRESS, SENTINEL_ABI, lasnaProvider);
+            
+            if (currentLasnaBlock > lastLasnaBlock) {
+                try {
+                    const events = await sentinelContract.queryFilter(sentinelContract.filters.Callback(), lastLasnaBlock + 1, currentLasnaBlock);
+                    events.forEach((event: any) => {
+                        eventCallbacks.forEach(cb => cb('REACTIVE_CALLBACK', {
+                            chainId: event.args[0],
+                            target: event.args[1],
+                            txHash: event.transactionHash,
+                            timestamp: new Date().toLocaleTimeString()
+                        }));
+                    });
+                    lastLasnaBlock = currentLasnaBlock;
+                } catch (filterError: any) {
+                    // Suppress "block not found" errors common with public RPCs
+                    if (filterError?.message?.includes('block not found') || filterError?.info?.error?.message?.includes('block not found')) {
+                        console.warn('Lasna RPC syncing, retrying next cycle...');
+                        return;
+                    }
+                    throw filterError;
+                }
+            }
+        } catch (err) {
+            console.error('Error polling Lasna events:', err);
+        }
+    }, 5000);
+};
+
+// Hook for listening to blockchain events
+export const useContractEvents = (callback: EventCallback) => {
+  useEffect(() => {
+    eventCallbacks.add(callback);
+    startPolling(); // Ensure polling is started
+
     return () => {
-      clearInterval(pollInterval);
       eventCallbacks.delete(callback);
     };
   }, [callback]);

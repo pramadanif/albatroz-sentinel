@@ -8,6 +8,7 @@ interface LogEntry {
   timestamp: string;
   message: string;
   type: 'info' | 'success' | 'warning' | 'decision';
+  txHash?: string;
 }
 
 const TerminalLog: React.FC = () => {
@@ -15,7 +16,7 @@ const TerminalLog: React.FC = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [strategy, setStrategy] = useState<'conservative' | 'aggressive'>('conservative');
   const [mounted, setMounted] = useState(false);
-  const [autoScroll, setAutoScroll] = useState(true);
+  const [autoScroll, setAutoScroll] = useState(false);
   const logsEndRef = React.useRef<HTMLDivElement>(null);
 
   // Initialize logs only on client side to avoid hydration mismatch
@@ -44,6 +45,7 @@ const TerminalLog: React.FC = () => {
     
     let message = '';
     let logType: LogEntry['type'] = 'info';
+    let txHash: string | undefined = undefined;
 
     if (type === 'RATE_UPDATE') {
         message = `RATE_UPDATE: POOL_${data.pool} | RATE=${data.rate} bps | UTIL=${data.util} bps`;
@@ -51,16 +53,30 @@ const TerminalLog: React.FC = () => {
     } else if (type === 'STRATEGY_EXECUTION') {
         message = `STRATEGY_EXECUTED: ${data.reason} | MOVED ${Number(data.amount).toFixed(2)} USDC`;
         logType = 'decision';
+        txHash = data.txHash;
+    } else if (type === 'DEPOSIT') {
+        message = `DEPOSIT: ${Number(data.assets).toFixed(2)} USDC | FROM: ${data.sender.slice(0,6)}...`;
+        logType = 'success';
+        txHash = data.txHash;
+    } else if (type === 'WITHDRAW') {
+        message = `WITHDRAW: ${Number(data.assets).toFixed(2)} USDC | TO: ${data.receiver.slice(0,6)}...`;
+        logType = 'warning';
+        txHash = data.txHash;
+    } else if (type === 'REACTIVE_CALLBACK') {
+        message = `REACTIVE_NET: CALLBACK SENT | TARGET: ${data.target.slice(0,6)}...`;
+        logType = 'decision';
+        txHash = data.txHash;
     }
 
     if (message) {
         setLogs(prev => [
           ...prev.slice(-9),
           { 
-            id: Date.now(), 
+            id: Date.now() + Math.random(), 
             timestamp: timeString, 
             message, 
-            type: logType
+            type: logType,
+            txHash
           }
         ]);
     }
@@ -90,8 +106,16 @@ const TerminalLog: React.FC = () => {
           <div className="text-[#00FFFF] text-xs font-bold tracking-wider">INTELLIGENCE_TERMINAL</div>
           <div className="text-[10px] text-[#666] mt-1">Reactive Event Stream</div>
         </div>
-        <div className="text-xs text-[#00FF00] animate-pulse font-mono">
-          {poolA && poolB ? '● LIVE' : '○ SYNCING'}
+        <div className="flex items-center gap-4">
+            <button 
+                onClick={() => setAutoScroll(!autoScroll)}
+                className={`text-[10px] font-mono px-2 py-1 border transition-colors ${autoScroll ? 'border-[#00FF00] text-[#00FF00] bg-[#00FF00]/10' : 'border-[#333] text-[#666] hover:border-[#666]'}`}
+            >
+                {autoScroll ? '[SCROLL: ON]' : '[SCROLL: OFF]'}
+            </button>
+            <div className="text-xs text-[#00FF00] animate-pulse font-mono">
+              {poolA && poolB ? '● LIVE' : '○ SYNCING'}
+            </div>
         </div>
       </div>
 
@@ -114,8 +138,6 @@ const TerminalLog: React.FC = () => {
       {/* Terminal Logs */}
       <div 
         className="flex-1 overflow-y-auto p-4 font-mono text-xs space-y-1 bg-[#050505]/50 scroll-smooth"
-        onMouseEnter={() => setAutoScroll(false)}
-        onMouseLeave={() => setAutoScroll(true)}
       >
         {logs.map((log, idx) => (
           <div 
@@ -129,6 +151,16 @@ const TerminalLog: React.FC = () => {
             <span className={`${getLogColor(log.type)} flex-1 break-words font-mono`}>
               {log.type === 'decision' ? '→ ' : '&gt; '}
               {log.message}
+              {log.txHash && (
+                <a 
+                  href={log.message.includes('REACTIVE_NET') ? `https://lasna.rnk.dev/tx/${log.txHash}` : `https://sepolia.etherscan.io/tx/${log.txHash}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="ml-2 text-[#00FFFF] underline hover:text-white text-[10px]"
+                >
+                  [VIEW_TX]
+                </a>
+              )}
             </span>
           </div>
         ))}
