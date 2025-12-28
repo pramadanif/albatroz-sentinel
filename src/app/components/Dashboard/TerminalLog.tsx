@@ -24,6 +24,8 @@ const TerminalLog: React.FC = () => {
     setLogs([
       { id: 1, timestamp: new Date().toLocaleTimeString(), message: 'SYSTEM_INITIALIZED', type: 'success' },
       { id: 2, timestamp: new Date().toLocaleTimeString(), message: 'LISTENING_TO_POOL_EVENTS...', type: 'info' },
+      { id: 3, timestamp: new Date().toLocaleTimeString(), message: 'SENTINEL_STATUS: ACTIVE (0xdde...f5d)', type: 'success' },
+      { id: 4, timestamp: new Date().toLocaleTimeString(), message: 'VAULT_PROXY: CONNECTED (0x894...c97)', type: 'success' },
     ]);
   }, []);
 

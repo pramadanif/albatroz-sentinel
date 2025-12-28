@@ -27,7 +27,7 @@ const Hero: React.FC = () => {
           </p>
           
           <div className="flex flex-wrap gap-4 mt-6">
-            <button className="group relative bg-[#00FF00]/10 border border-[#00FF00] text-[#00FF00] px-8 py-4 font-bold tracking-widest uppercase transition-all hover:bg-[#00FF00] hover:text-black hover:shadow-[0_0_20px_#00FF00]">
+            <a href="/dashboard" className="group relative bg-[#00FF00]/10 border border-[#00FF00] text-[#00FF00] px-8 py-4 font-bold tracking-widest uppercase transition-all hover:bg-[#00FF00] hover:text-black hover:shadow-[0_0_20px_#00FF00]">
               <span className="flex items-center gap-2">
                 <Terminal size={18} />
                 [ EXECUTE_DASHBOARD ]
@@ -35,14 +35,14 @@ const Hero: React.FC = () => {
               {/* Corner accents */}
               <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#00FF00] -translate-x-1 -translate-y-1 group-hover:translate-x-0 group-hover:translate-y-0 transition-transform"></div>
               <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#00FF00] translate-x-1 translate-y-1 group-hover:translate-x-0 group-hover:translate-y-0 transition-transform"></div>
-            </button>
+            </a>
             
-            <button className="group px-8 py-4 border border-[#333333] text-gray-400 font-bold tracking-widest uppercase hover:text-[#00FFFF] hover:border-[#00FFFF] transition-all">
+            <a href="/docs" className="group px-8 py-4 border border-[#333333] text-gray-400 font-bold tracking-widest uppercase hover:text-[#00FFFF] hover:border-[#00FFFF] transition-all">
               <span className="flex items-center gap-2">
-                [ VIEW_CONTRACTS ]
+                [ READ_DOCS ]
                 <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </span>
-            </button>
+            </a>
           </div>
         </div>
 

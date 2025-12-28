@@ -24,28 +24,33 @@ interface Step {
 const Terminal: React.FC = () => {
   // State for simulated live data
   const [logs, setLogs] = useState<Log[]>([
-    { id: 1, timestamp: '14:02:10', source: 'SEPOLIA', event: 'Event.RateUpdated [Pool_A]', value: '4.85%', type: 'info' },
-    { id: 2, timestamp: '14:02:12', source: 'SEPOLIA', event: 'Event.RateUpdated [Pool_B]', value: '6.20%', type: 'info' },
+    { id: 1, timestamp: '14:00:00', source: 'SYSTEM', event: 'Init.Config', value: 'Proxy Set: 0x894f...cc97', type: 'success' },
+    { id: 2, timestamp: '14:00:05', source: 'SEPOLIA', event: 'Tx.Setup', value: 'Hash: 0x5366...f006d8162', type: 'info' },
+    { id: 3, timestamp: '14:05:00', source: 'SEPOLIA', event: 'Event.RateUpdated', value: 'Pool A: 5% (Trigger)', type: 'warning' },
+    { id: 4, timestamp: '14:05:02', source: 'SEPOLIA', event: 'Tx.Trigger', value: 'Hash: 0xb7f2...929da52a', type: 'info' },
+    { id: 5, timestamp: '14:05:15', source: 'REACTIVE', event: 'Logic.ProfitCalc', value: 'Delta Detected > Threshold', type: 'success' },
+    { id: 6, timestamp: '14:05:18', source: 'REACTIVE', event: 'Callback.Sent', value: 'Target: AlbatrozVault', type: 'success' },
+    { id: 7, timestamp: '14:05:30', source: 'SEPOLIA', event: 'Vault.Rebalance', value: 'Success: Pool A -> Pool B', type: 'success' },
   ]);
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(4); // Completed state
   const [metrics, setMetrics] = useState([
-    { subject: 'Yield', A: 120, fullMark: 150 },
-    { subject: 'Util', A: 98, fullMark: 150 },
-    { subject: 'Risk', A: 40, fullMark: 150 },
-    { subject: 'Gas', A: 65, fullMark: 150 },
-    { subject: 'Vol', A: 85, fullMark: 150 },
-    { subject: 'Liq', A: 110, fullMark: 150 },
+    { subject: 'Yield', A: 145, fullMark: 150 },
+    { subject: 'Util', A: 120, fullMark: 150 },
+    { subject: 'Risk', A: 30, fullMark: 150 },
+    { subject: 'Gas', A: 80, fullMark: 150 },
+    { subject: 'Vol', A: 60, fullMark: 150 },
+    { subject: 'Liq', A: 130, fullMark: 150 },
   ]);
 
   const steps: Step[] = [
-    { id: '1', label: 'Reactive_Network Detect', status: 'idle' },
-    { id: '2', label: 'Compute Profit Score', status: 'idle' },
-    { id: '3', label: 'Sending_Callback', status: 'idle' },
-    { id: '4', label: 'Sepolia_Proxy Verify', status: 'idle' },
-    { id: '5', label: 'Vault.rebalance()', status: 'idle' },
+    { id: '1', label: 'Reactive_Network Detect', status: 'completed' },
+    { id: '2', label: 'Compute Profit Score', status: 'completed' },
+    { id: '3', label: 'Sending_Callback', status: 'completed' },
+    { id: '4', label: 'Sepolia_Proxy Verify', status: 'completed' },
+    { id: '5', label: 'Vault.rebalance()', status: 'completed' },
   ];
 
-  // Simulation Effect
+  // Simulation Effect - Keep alive heartbeat
   useEffect(() => {
     const interval = setInterval(() => {
       // 1. Add Log
@@ -54,21 +59,18 @@ const Terminal: React.FC = () => {
       const newLog: Log = {
         id: Date.now(),
         timestamp: timeString,
-        source: 'REACTIVE',
-        event: 'Logic.ProfitCalc',
-        value: `Delta +${(Math.random() * 2).toFixed(2)}%`,
-        type: 'success'
+        source: 'SENTINEL',
+        event: 'Heartbeat.Check',
+        value: 'Monitoring Rates...',
+        type: 'info'
       };
       
-      setLogs(prev => [newLog, ...prev].slice(0, 8));
+      setLogs(prev => [newLog, ...prev].slice(0, 10));
 
       // 2. Randomize Metrics slightly
-      setMetrics(prev => prev.map(m => ({ ...m, A: Math.min(140, Math.max(20, m.A + (Math.random() * 20 - 10))) })));
+      setMetrics(prev => prev.map(m => ({ ...m, A: Math.min(145, Math.max(100, m.A + (Math.random() * 10 - 5))) })));
 
-      // 3. Cycle Progress
-      setCurrentStep(prev => (prev + 1) % 5);
-
-    }, 2000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, []);

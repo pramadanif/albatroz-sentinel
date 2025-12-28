@@ -30,6 +30,17 @@ Without Reactive Contracts, this solution would require:
 
 ---
 
+## ✨ Key Features
+
+*   **🤖 Autonomous Rebalancing:** Automatically moves funds to the highest yielding pool without user intervention.
+*   **⚡ Reactive Event Listening:** Subscribes to `RateUpdated` events on Sepolia via the Reactive Network (Lasna).
+*   **🛡️ Trustless Execution:** Eliminates the need for centralized keepers or off-chain bots.
+*   **💰 Gas-Optimized Logic:** Smart contracts calculate profitability on-chain before triggering callbacks.
+*   **🏦 ERC-4626 Standard:** Fully compatible with the standard Tokenized Vault standard for easy integration.
+*   **📊 Real-Time Dashboard:** Live visualization of cross-chain events, vault status, and transaction logs.
+
+---
+
 ## 🏗 Architecture & Addresses
 
 The system consists of three main components across two chains:
@@ -50,19 +61,230 @@ The system consists of three main components across two chains:
 
 ---
 
-## 🔄 Workflow & Transaction Hashes
+## � Smart Contract Architecture & Technical Specifications
+
+### 1. **AlbatrozVault (ERC-4626 Vault) - Sepolia**
+**Address:** `0xB7c78ceCB25a1c40b3fa3382bAf3F34c9b5bdD66`
+
+#### Features
+*   **ERC-4626 Compliant:** Standard Tokenized Vault interface for seamless DeFi composability
+*   **Proxy-Guarded Execution:** Only the official Reactive Callback Proxy can trigger rebalancing
+*   **Slippage Protection:** Enforces minimum output amount to guard against price manipulation
+*   **Multi-Pool Support:** Seamlessly moves assets between lending pools
+*   **Event Logging:** Emits `StrategyExecuted` events for full transaction auditability
+
+#### Key Functions
+```solidity
+// Autonomous rebalancing called by Reactive Network Proxy
+function rebalance(
+    address fromPool,      // Current pool (source)
+    address toPool,        // Target pool (destination)
+    uint256 amount,        // USDC amount to move
+    uint256 minAmountOut   // Slippage guard
+) external onlyProxy
+
+// Admin function to update proxy authorization
+function setProxy(address _proxy) external onlyOwner
+```
+
+#### Security Mechanisms
+*   **Access Control:** Only `reactiveProxy` address can execute rebalancing
+*   **Owner-Protected:** Critical functions guarded by `Ownable` pattern
+*   **Slippage Guards:** Requires withdrawn amount >= minAmountOut
+
+---
+
+### 2. **AlbatrozSentinel (Reactive Smart Contract) - Lasna**
+**Address:** `0xdde26714a634370A0fb9Ff49Df07Ec2A5cF28f5d`
+
+#### Core Responsibilities
+The Sentinel acts as an **autonomous decision-making engine** that:
+1. Listens to `RateUpdated` events from multiple lending pools on Sepolia
+2. Calculates yield optimization scores for all pools
+3. Determines if rebalancing is profitable
+4. Triggers cross-chain callbacks when beneficial
+
+#### Features & Enhancements
+
+##### **Enhancement #1: Safety-First Circuit Breaker** ✅
+When a pool reaches critical risk:
+```
+IF utilization_rate > 95% THEN:
+    Ignore yield comparison
+    Find safest pool (lowest utilization)
+    Immediately evacuate funds
+    Use emergency gas limit (500,000)
+```
+**Activation Condition:** `pools[currentPool].util > 9500` (95%)
+**Impact:** Prioritizes capital preservation over yield optimization
+
+##### **Enhancement #2: Hysteresis Logic (Game Theory)** ✅
+Prevents inefficient "ping-pong" rebalancing:
+```
+NEW_THRESHOLD = 250 basis points (2.5%)
+
+IF already_in_pool_B AND pool_A_rate > pool_B_rate THEN:
+    Require: Pool_A_Score > Pool_B_Score + 250 bps
+    NOT just: Pool_A_Score > Pool_B_Score
+```
+**Formula:**
+$$\text{Score}_{new} - \text{Score}_{current} > \text{REBALANCE\_THRESHOLD}$$
+
+**Benefit:** Reduces gas costs by preventing unnecessary moves when rates are similar
+
+##### **Enhancement #3: Transparency & Data Provenance** ✅
+UI displays `Source: Reactive Indexer 0x...` for all rate data
+**Ensures:** Complete auditability of data sources
+
+##### **Enhancement #4: Modular Pool Registry** ✅
+Dynamic pool tracking instead of hardcoded addresses:
+```solidity
+mapping(address => PoolInfo) public pools;
+address[] public trackedPools;
+
+// Add new pools at runtime
+function addPool(address _pool) public
+```
+**Scalability:** Support for 10+ pools without code changes
+
+#### Key Formulas
+
+##### **RAYS Score (Risk-Adjusted Yield Score)**
+$$\text{RAYS} = (\text{SupplyRate} \times 0.8) - (\text{UtilizationRate} \times 0.2)$$
+
+**Component Explanation:**
+*   **SupplyRate (80% weight):** Primary yield measurement
+*   **UtilizationRate (20% weight):** Risk penalty (high util = lower score)
+
+**Example Calculation:**
+- Pool A: Rate = 500 bps (5%), Util = 7500 bps (75%)
+  - RAYS = (500 × 0.8) - (7500 × 0.2) = 400 - 1500 = **-1100**
+- Pool B: Rate = 1200 bps (12%), Util = 6000 bps (60%)
+  - RAYS = (1200 × 0.8) - (6000 × 0.2) = 960 - 1200 = **-240**
+- **Decision:** Pool B > Pool A (higher score) → Move funds from A to B
+
+##### **Gas Guard Profitability Check**
+$$\text{EstimatedProfit}_{USD} = \frac{\text{ScoreDifference} \times \text{RebalanceAmount}}{10000}$$
+
+$$\text{GasCost}_{USD} = \frac{\text{GasUsed} \times \text{GasPrice} \times \text{EthPrice}}{10^{27}}$$
+
+$$\text{Execute} \iff \text{EstimatedProfit}_{USD} > \text{GasCost}_{USD} + \text{MinProfitThreshold}$$
+
+**Default Constants:**
+- `gasUsed = 200,000` (normal rebalance) or `500,000` (emergency)
+- `gasPrice = 25 gwei` (adjustable)
+- `ethPrice = $2,000` (oracle-ready)
+- `minProfitThreshold = $10` (minimum net profit)
+
+##### **Cooldown Period**
+$$\text{CanRebalance} \iff \text{now} > \text{lastRebalanceTime} + 1 \text{ hour}$$
+
+**Purpose:** Prevents spam and ensures meaningful time between moves
+
+#### Function Flow
+
+```
+onEvent(RateUpdated)
+    ↓
+Update pools[].rate and pools[].util
+    ↓
+_optimize()
+    ↓
+[Check Cooldown] → Skip if < 1 hour
+    ↓
+[Circuit Breaker] → Emergency evacuation if util > 95%
+    ↓
+[Calculate RAYS Scores] for all pools
+    ↓
+[Hysteresis Check] → Score diff must exceed threshold
+    ↓
+[Gas Guard Check] → Profit must exceed gas cost
+    ↓
+_executeRebalance() → Emit Callback to Sepolia Vault
+```
+
+#### State Variables
+```solidity
+// Pool Registry
+mapping(address => PoolInfo) public pools;  // (rate, util, isTracked)
+address[] public trackedPools;               // Array of monitored pools
+address public currentPool;                  // Current asset location
+
+// Timing
+uint256 public lastRebalanceTime;
+uint256 public constant COOLDOWN_PERIOD = 1 hours;
+
+// Financial Parameters
+uint256 public gasPrice = 25 gwei;
+uint256 public ethPrice = $2,000;
+uint256 public minProfitThreshold = $10 USDC;
+
+// Configuration
+uint256 public constant REBALANCE_THRESHOLD = 250;  // 2.5%
+```
+
+---
+
+### 3. **MockLendingPool (Test Pool) - Sepolia**
+**Addresses:**
+- Pool A: `0x46eE74Bf6D3c6b06483Ec4BF4066a8117Fa8Cb47`
+- Pool B: `0xBE2bcf983b84c030b0C851989aDF351816fA21D2`
+
+#### Features
+*   **Rate Manipulation:** `setMarketConditions()` for testing different scenarios
+*   **Standard Lending Pool Interface:** Matches real Aave/Compound patterns
+*   **Event Emission:** `RateUpdated(uint256 rate, uint256 util)` triggers Sentinel
+
+#### Key Functions
+```solidity
+// Change interest rates (demo/testing)
+function setMarketConditions(uint256 _rate, uint256 _util) external
+
+// Standard lending operations
+function deposit(uint256 amount) external
+function withdraw(uint256 amount) external
+
+// Read functions
+function supplyRate() public view returns (uint256)      // in basis points
+function utilizationRate() public view returns (uint256)  // in basis points
+```
+
+---
+
+### 4. **MockUSDC (Test Asset) - Sepolia**
+**Address:** `0x1C512b73599bB25aee2feE72f335Ccb9281f33D2`
+
+#### Features
+*   **Standard ERC-20 Token:** 6 decimals (like real USDC)
+*   **Unlimited Minting:** For development and testing
+*   **Full Transfer Support:** Enables all DeFi composability
+
+#### Key Functions
+```solidity
+// Mint new tokens (dev utility)
+function mint(address to, uint256 amount) external
+
+// Standard ERC-20 (inherited)
+function transfer(address to, uint256 amount) external
+function approve(address spender, uint256 amount) external
+function transferFrom(address from, address to, uint256 amount) external
+```
+
+---
+
+## �🔄 Workflow & Transaction Hashes
 
 The following step-by-step workflow demonstrates the live system operation.
 
 ### Step 1: System Configuration (One-time)
 We configured the `AlbatrozVault` to accept callbacks *only* from the official Reactive Network Proxy.
 *   **Action:** `setProxy(0x894f2f22a6552a52B73a819ca6FAF0a09880cc97)`
-*   **Transaction Hash (Sepolia):** `0x5366b3d967bd11ab066c626a30681bfa295432f2b4d842a39761a28f006d8162`
+*   **Transaction Hash (Sepolia):** [0x5366b3d967bd11ab066c626a30681bfa295432f2b4d842a39761a28f006d8162](https://sepolia.etherscan.io/tx/0x5366b3d967bd11ab066c626a30681bfa295432f2b4d842a39761a28f006d8162)
 
 ### Step 2: Trigger Event (Origin)
 We simulated a market shift by lowering the interest rate of **Pool A** to 5%, making Pool B (12%) more attractive.
 *   **Action:** `PoolA.setMarketConditions(rate=5%, util=80%)`
-*   **Transaction Hash (Sepolia):** `0xb7f20350873059c36db9fd130634517f1e58e9cade1d54cbe6975f96929da52a`
+*   **Transaction Hash (Sepolia):** [0xb7f20350873059c36db9fd130634517f1e58e9cade1d54cbe6975f96929da52a](https://sepolia.etherscan.io/tx/0xb7f20350873059c36db9fd130634517f1e58e9cade1d54cbe6975f96929da52a)
 *   **Event Emitted:** `RateUpdated(5, 80)`
 
 ### Step 3: Reactive Detection & Callback (Reactive Network)
