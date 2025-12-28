@@ -61,9 +61,10 @@ const MarketManipulator: React.FC = () => {
       const poolContract = new ethers.Contract(poolAddress, POOL_ABI, signer);
 
       // Call setMarketConditions
+      // Note: MockLendingPool expects raw basis points (e.g. 500 for 5%), not 18 decimals
       const tx = await poolContract.setMarketConditions(
-        ethers.parseUnits(state.newRate),
-        ethers.parseUnits(state.newUtil)
+        BigInt(state.newRate),
+        BigInt(state.newUtil)
       );
 
       setState(prev => ({

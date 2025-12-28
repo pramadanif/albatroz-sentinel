@@ -1,22 +1,23 @@
-Compiling 2 files with Solc 0.8.19
-Solc 0.8.19 finished in 375.70ms
+[⠊] Compiling...
+[⠰] Compiling 2 files with Solc 0.8.19
+[⠔] Solc 0.8.19 finished in 367.14ms
 Compiler run successful with warnings:
 Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
-  --> AlbatrozSentinel.sol:51:9:
+  --> AlbatrozSentinel.sol:92:9:
    |
-51 |         uint256 chainId,
+92 |         uint256 chainId,
    |         ^^^^^^^^^^^^^^^
 
 Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
-  --> AlbatrozSentinel.sol:53:9:
+  --> AlbatrozSentinel.sol:94:9:
    |
-53 |         uint256 topic0,
+94 |         uint256 topic0,
    |         ^^^^^^^^^^^^^^
 
 Script ran successfully.
 
 == Logs ==
-  AlbatrozSentinel deployed at: 0x875507ef1fE7b067eAFea09BddFF193c30f1D21B
+  AlbatrozSentinel deployed at: 0xdde26714a634370A0fb9Ff49Df07Ec2A5cF28f5d
   Vault Address: 0xB7c78ceCB25a1c40b3fa3382bAf3F34c9b5bdD66
   Pool A Address: 0x46eE74Bf6D3c6b06483Ec4BF4066a8117Fa8Cb47
   Pool B Address: 0xBE2bcf983b84c030b0C851989aDF351816fA21D2
@@ -27,14 +28,31 @@ Script ran successfully.
 
 Chain 5318007
 
-Estimated gas price: 212 gwei
+Estimated gas price: 112 gwei
 
-Estimated total gas used for script: 571443
+Estimated total gas used for script: 1312647
 
-Estimated amount required: 0.121145916 ETH
+Estimated amount required: 0.147016464 ETH
 
 ==========================
 
+##### 5318007
+✅  [Success] Hash: 0xc492a8450566d4400df81b039cd62974faf7e139fcf05b2e401b87bf4ed5dcc2
+Contract Address: 0xdde26714a634370A0fb9Ff49Df07Ec2A5cF28f5d
+Block: 1834181
+Paid: 0.101060624 ETH (902327 gas * 112 gwei)
+
+⠂ Sequence #1 on 5318007 | Waiting for pending transactions
+    ⢀ [Pending] 0xc62430409bc94c319d1bfa919b5124bf3a97e9982fdb2076b8f0db97872d8008
+    ⠓ [00:00:23] [###########################################################] 2/2 txes (0.0s)
+
+##### 5318007
+✅  [Success] Hash: 0xc62430409bc94c319d1bfa919b5124bf3a97e9982fdb2076b8f0db97872d8008
+Block: 1834181
+Paid: 0.011404736 ETH (101828 gas * 112 gwei)
+
+✅ Sequence #1 on 5318007 | Total Paid: 0.11246536 ETH (1004155 gas * avg 112 gwei)
+                                                                                              
 
 ==========================
 
