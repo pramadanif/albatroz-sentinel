@@ -5,7 +5,6 @@ import SystemMarquee from './SystemMarquee';
 import VaultStats from './VaultStats';
 import TerminalLog from './TerminalLog';
 import MarketManipulator from './MarketManipulator';
-import DataFlow from './DataFlow';
 
 const Dashboard: React.FC = () => {
   return (
@@ -34,20 +33,15 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Bottom Section: Data Flow */}
-        <div className="mb-6">
-          <DataFlow />
-        </div>
-
         {/* Footer Note */}
         <div className="text-center p-4 border border-[#333333] bg-[#050505]">
           <div className="text-[#00FFFF] text-xs font-mono mb-2">
             Reactive Event-Driven Architecture: Eliminating off-chain keepers through native cross-chain orchestration.
           </div>
           <div className="text-[10px] text-[#666] space-x-4">
-            <a href="#" className="hover:text-[#00FF00] transition-colors">[GitHub]</a>
-            <a href="#" className="hover:text-[#00FF00] transition-colors">[Lasna Explorer]</a>
-            <a href="#" className="hover:text-[#00FF00] transition-colors">[Documentation]</a>
+            <a href="https://github.com/your-repo/albatroz" target="_blank" className="hover:text-[#00FF00] transition-colors">[GitHub]</a>
+            <a href="https://lasna.rnk.dev/" target="_blank" className="hover:text-[#00FF00] transition-colors">[Lasna Explorer]</a>
+            <a href="/docs" className="hover:text-[#00FF00] transition-colors">[Documentation]</a>
           </div>
         </div>
       </div>

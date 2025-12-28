@@ -17,7 +17,11 @@ contract DeployReactive is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy AlbatrozSentinel contract directly
-        AlbatrozSentinel sentinel = new AlbatrozSentinel(VAULT_ADDRESS, POOL_A_ADDRESS, POOL_B_ADDRESS);
+        // Updated constructor: (vault, initialPool)
+        AlbatrozSentinel sentinel = new AlbatrozSentinel{value: 0.2 ether}(VAULT_ADDRESS, POOL_A_ADDRESS);
+        
+        // Register additional pools
+        sentinel.addPool(POOL_B_ADDRESS);
 
         vm.stopBroadcast();
 

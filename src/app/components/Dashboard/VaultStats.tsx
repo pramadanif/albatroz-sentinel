@@ -50,8 +50,8 @@ const VaultStats: React.FC = () => {
       const vaultContract = new ethers.Contract(VAULT_ADDRESS, VAULT_ABI, signer);
       const usdcContract = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, signer);
       
-      // Parse amount (assuming 6 decimals for USDC)
-      const decimals = 6; 
+      // Parse amount (MockUSDC uses 18 decimals by default, unlike real USDC's 6)
+      const decimals = await usdcContract.decimals(); 
       const amountBigInt = ethers.parseUnits(amount, decimals);
 
       if (mode === 'deposit') {
