@@ -153,7 +153,7 @@ const TerminalLog: React.FC = () => {
               {log.message}
               {log.txHash && (
                 <a 
-                  href={log.message.includes('REACTIVE_NET') ? `https://lasna.rnk.dev/tx/${log.txHash}` : `https://sepolia.etherscan.io/tx/${log.txHash}`} 
+                  href={log.message.includes('REACTIVE_NET') ? `https://reactscan.net/tx/${log.txHash}` : `https://sepolia.etherscan.io/tx/${log.txHash}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="ml-2 text-[#00FFFF] underline hover:text-white text-[10px]"
