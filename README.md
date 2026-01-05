@@ -51,13 +51,13 @@ The system consists of three main components across two chains:
 *   **MockUSDC (Asset):** `0x1C512b73599bB25aee2feE72f335Ccb9281f33D2`
 
 ### Reactive Network (Lasna Testnet)
-*   **AlbatrozSentinel (Reactive Contract):** `0xdde26714a634370A0fb9Ff49Df07Ec2A5cF28f5d`
+*   **AlbatrozSentinel (Reactive Contract):** `0xbC92DAD9027f3bcEC366EaBdC581d484590Ed337`
     *   *Role:* Subscribes to `RateUpdated` events, calculates profitability, and triggers rebalance.
 
 ### Destination Chain (Ethereum Sepolia)
 *   **AlbatrozVault (ERC4626 Vault):** `0xB7c78ceCB25a1c40b3fa3382bAf3F34c9b5bdD66`
     *   *Role:* Holds user funds and executes the `rebalance()` function when called by the Reactive Proxy.
-*   **Reactive Callback Proxy:** `0x894f2f22a6552a52B73a819ca6FAF0a09880cc97`
+
 
 ---
 
@@ -95,7 +95,7 @@ function setProxy(address _proxy) external onlyOwner
 ---
 
 ### 2. **AlbatrozSentinel (Reactive Smart Contract) - Lasna**
-**Address:** `0xdde26714a634370A0fb9Ff49Df07Ec2A5cF28f5d`
+**Address:** `0xbC92DAD9027f3bcEC366EaBdC581d484590Ed337`
 
 #### Core Responsibilities
 The Sentinel acts as an **autonomous decision-making engine** that:
@@ -278,14 +278,14 @@ The following step-by-step workflow demonstrates the live system operation.
 
 ### Step 1: System Configuration (One-time)
 We configured the `AlbatrozVault` to accept callbacks *only* from the official Reactive Network Proxy.
-*   **Action:** `setProxy(0x894f2f22a6552a52B73a819ca6FAF0a09880cc97)`
+*   **Action:** `setProxy(ALLOWED_PROXY_ADDRESS)`
 *   **Transaction Hash (Sepolia):** [0x5366b3d967bd11ab066c626a30681bfa295432f2b4d842a39761a28f006d8162](https://sepolia.etherscan.io/tx/0x5366b3d967bd11ab066c626a30681bfa295432f2b4d842a39761a28f006d8162)
 
 ### Step 2: Trigger Event (Origin)
 We simulated a market shift by lowering the interest rate of **Pool A** to 5%, making Pool B (12%) more attractive.
 *   **Action:** `PoolA.setMarketConditions(rate=5%, util=80%)`
-*   **Transaction Hash (Sepolia):** [0xb7f20350873059c36db9fd130634517f1e58e9cade1d54cbe6975f96929da52a](https://sepolia.etherscan.io/tx/0xb7f20350873059c36db9fd130634517f1e58e9cade1d54cbe6975f96929da52a)
-*   **Event Emitted:** `RateUpdated(5, 80)`
+*   **Transaction Hash (Sepolia):** [0xfc1001939d07ac3d2c280fefe91506a663c4498c299fa4d3538aaca9599c1b0c](https://sepolia.etherscan.io/tx/0xfc1001939d07ac3d2c280fefe91506a663c4498c299fa4d3538aaca9599c1b0c)
+*   **Event Emitted:** `RateUpdated(1200, 3000)`
 
 ### Step 3: Reactive Detection & Callback (Reactive Network)
 The `AlbatrozSentinel` on Lasna detects the event.
@@ -346,3 +346,62 @@ Visit `http://localhost:3000` to see the live Ticker and Vault status.
 
 ## 📄 License
 MIT
+
+---
+
+## ✅ End-to-End Verification Proof (Live Testnet)
+
+The following logs demonstrate a successful autonomous rebalance cycle triggered by market conditions on Sepolia.
+
+### 1. Simulation Output (CLI)
+Running `node simulate_rebalance.js`:
+
+```bash
+📊 Simulating market condition updates...
+
+Pool A: Updating supply rate to 200 bps (LOW - BAD)
+        Updating utilization to 9000 bps (HIGH - BAD)
+⏳ Transaction sent: 0xb6fa395559fce194d095841a905c70e62d1a4b9383d2e7816eefc524a88c150f
+✅ Pool A updated at block 9983850
+
+Pool B: Updating supply rate to 1200 bps (HIGH - GOOD)
+        Updating utilization to 3000 bps (LOW - GOOD)
+⏳ Transaction sent: 0xfc1001939d07ac3d2c280fefe91506a663c4498c299fa4d3538aaca9599c1b0c
+✅ Pool B updated at block 9983851
+
+📝 Fetching updated contract state...
+
+Pool A new state:
+  Supply Rate: 200 bps (2%)
+  Utilization: 9000 bps (90%)
+
+Pool B new state:
+  Supply Rate: 1200 bps (12%)
+  Utilization: 3000 bps (30%)
+```
+
+### 2. Transaction Details (Reactive Explorer)
+
+#### **Origin Transaction (Trigger)**
+*   **Hash:** [0xfc1001939d07ac3d2c280fefe91506a663c4498c299fa4d3538aaca9599c1b0c](https://sepolia.etherscan.io/tx/0xfc1001939d07ac3d2c280fefe91506a663c4498c299fa4d3538aaca9599c1b0c)
+*   **Event:** `RateUpdated(1200, 3000)` on Pool B
+*   **Block:** 9983851
+
+#### **Reactive Transaction (Decision)**
+*   **Hash:** [0x0c02550212299c9310ad87bcbcb306d4de32dbf1117b04de6fa4fd5c2d5652a8](https://lasna.reactscan.net/tx/0x0c02550212299c9310ad87bcbcb306d4de32dbf1117b04de6fa4fd5c2d5652a8)
+or https://lasna.reactscan.net/address/0xb4d186af4d691de665a36bda1104067e069a15f8/141
+*   **Status:** Success
+*   **Gas Used:** 178,187 (19.80% of 900k limit)
+*   **Action:** Detects Pool B > Pool A. Emits Callback.
+
+#### **Destination Transaction (Execution)**
+*   **Hash:** [0xdc2941ba8d83402511e26ce7851b1b1e186f346beb32de57b1d5576d47ac9542](https://sepolia.etherscan.io/tx/0xdc2941ba8d83402511e26ce7851b1b1e186f346beb32de57b1d5576d47ac9542)
+*   **Status:** **Success** ✅
+*   **Function:** `rebalanceFull(PoolA, PoolB, ...)`
+*   **Result:** Vault assets moved from Pool A to Pool B.
+
+#### **Reactive Payload Data**
+*   **Topic 0:** `0xb38780ddde1f073d91c150de2696f3f7085883648ba21cc5ef01029cb21d1916` (RateUpdated)
+*   **Callback Gas Limit:** 500,000 (Optimized for reliability)
+*   **Payload Signature:** `Callback(0x8dd725fa...)`
+

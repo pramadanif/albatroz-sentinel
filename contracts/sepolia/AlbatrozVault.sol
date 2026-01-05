@@ -11,11 +11,15 @@ interface IMockPool {
 
 contract AlbatrozVault is ERC4626, Ownable {
     address public reactiveProxy; // Callback address from Reactive Network
+    address public constant REACTIVE_CALLBACK = 0xc9f36411C9897e7F959D99ffca2a0Ba7ee0D7bDA; // Reactive Network Callback Contract
     
     event StrategyExecuted(address fromPool, address toPool, uint256 amount, string reason);
 
     modifier onlyProxy() {
-        require(msg.sender == reactiveProxy, "Only Reactive Proxy allowed");
+        require(
+            msg.sender == reactiveProxy || msg.sender == REACTIVE_CALLBACK,
+            "Only Reactive Proxy allowed"
+        );
         _;
     }
 
@@ -29,8 +33,32 @@ contract AlbatrozVault is ERC4626, Ownable {
         reactiveProxy = _proxy;
     }
 
-    // MAIN FUNCTION: Called autonomously by Sentinel
-    function rebalance(
+    // SIMPLIFIED REBALANCE: Called by Sentinel via Reactive Network
+    // Moves ALL vault balance from one pool to another
+    function rebalance(address fromPool, address toPool) external onlyProxy {
+        IERC20 assetToken = IERC20(asset());
+        
+        // Get current balance in fromPool (simplified: assume all funds are there)
+        uint256 vaultBalance = assetToken.balanceOf(address(this));
+        
+        if (vaultBalance == 0) {
+            // If no balance in vault, try to withdraw from fromPool
+            // For demo: withdraw a fixed amount or all available
+            IMockPool(fromPool).withdraw(1000 * 10**6); // 1000 USDC for demo
+            vaultBalance = assetToken.balanceOf(address(this));
+        }
+        
+        if (vaultBalance > 0) {
+            // Deposit to new, more profitable pool
+            assetToken.approve(toPool, vaultBalance);
+            IMockPool(toPool).deposit(vaultBalance);
+            
+            emit StrategyExecuted(fromPool, toPool, vaultBalance, "Autonomous Rebalance Success");
+        }
+    }
+
+    // FULL REBALANCE: For granular control
+    function rebalanceFull(
         address fromPool, 
         address toPool, 
         uint256 amount,

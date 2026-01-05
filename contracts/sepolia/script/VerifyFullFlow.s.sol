@@ -65,7 +65,7 @@ contract VerifyFullFlow is Script {
         // But wait, the Sentinel IS the proxy logic source, but on L1 the "Reactive System" calls it.
         // For verification, we just want to see if the Vault accepts the call.
         
-        try AlbatrozVault(VAULT).rebalance(POOL_A, POOL_B, 1000 * 10**6, 0) {
+        try AlbatrozVault(VAULT).rebalance(POOL_A, POOL_B) {
             console.log("Rebalance executed successfully!");
         } catch {
             console.log("Rebalance failed (Expected if not called by authorized proxy)");

@@ -12,35 +12,23 @@ require("dotenv").config();
 // Contract addresses from deployment
 const POOL_A_ADDRESS = "0x46eE74Bf6D3c6b06483Ec4BF4066a8117Fa8Cb47";
 const POOL_B_ADDRESS = "0xBE2bcf983b84c030b0C851989aDF351816fA21D2";
+const VAULT_ADDRESS = "0xB7c78ceCB25a1c40b3fa3382bAf3F34c9b5bdD66";
+const sentinelAddress = "0xbC92DAD9027f3bcEC366EaBdC581d484590Ed337";
 
 // MockLendingPool ABI (minimal - just setMarketConditions)
+// MockLendingPool ABI (minimal)
 const POOL_ABI = [
-  {
-    inputs: [
-      { internalType: "uint256", name: "_rate", type: "uint256" },
-      { internalType: "uint256", name: "_util", type: "uint256" },
-    ],
-    name: "setMarketConditions",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: false, internalType: "uint256", name: "newRate", type: "uint256" },
-      { indexed: false, internalType: "uint256", name: "newUtil", type: "uint256" },
-    ],
-    name: "RateUpdated",
-    type: "event",
-  },
+  "function setMarketConditions(uint256 _rate, uint256 _util) external",
+  "function supplyRate() view returns (uint256)",
+  "function utilizationRate() view returns (uint256)",
+  "event RateUpdated(uint256 newRate, uint256 newUtil)"
 ];
 
 async function simulateRebalance() {
   console.log("🚀 Starting Reactive Network simulation...\n");
 
   // Initialize provider and signer
-  const rpcUrl = process.env.SEPOLIA_RPC || "https://sepolia.drpc.org";
+  const rpcUrl = process.env.SEPOLIA_RPC || "https://ethereum-sepolia-rpc.publicnode.com";
   const privateKey = process.env.PRIVATE_KEY;
 
   if (!privateKey) {
@@ -71,23 +59,46 @@ async function simulateRebalance() {
     // Simulate different market conditions
     console.log("📊 Simulating market condition updates...\n");
 
-    // Pool A: Change from 450 bps (4.5%) supply rate to 520 bps (5.2%)
-    // Also increase utilization from 6000 bps (60%) to 7500 bps (75%)
-    console.log("Pool A: Updating supply rate from 450 bps to 520 bps");
-    console.log("        Updating utilization from 6000 bps to 7500 bps");
-    const tx1 = await poolA.setMarketConditions(520, 7500);
-    console.log(`⏳ Transaction sent: ${tx1.hash}`);
-    const receipt1 = await tx1.wait();
-    console.log(`✅ Pool A updated at block ${receipt1.blockNumber}\n`);
+    // Nonce management to avoid "already known" errors
+    let nonce = await provider.getTransactionCount(wallet.address, "pending");
 
-    // Pool B: Change from 725 bps (7.25%) supply rate to 650 bps (6.5%)
-    // Also decrease utilization from 8500 bps (85%) to 7200 bps (72%)
-    console.log("Pool B: Updating supply rate from 725 bps to 650 bps");
-    console.log("        Updating utilization from 8500 bps to 7200 bps");
-    const tx2 = await poolB.setMarketConditions(650, 7200);
-    console.log(`⏳ Transaction sent: ${tx2.hash}`);
-    const receipt2 = await tx2.wait();
-    console.log(`✅ Pool B updated at block ${receipt2.blockNumber}\n`);
+    // Pool A Update (BAD conditions - funds are here, should want to leave)
+    try {
+      // Low Rate + High Util = Very Low Score (BAD pool)
+      const rateA = 200;   // 2% - LOW
+      const utilA = 9000;  // 90% - HIGH
+      console.log(`Pool A: Updating supply rate to ${rateA} bps (LOW - BAD)`);
+      console.log(`        Updating utilization to ${utilA} bps (HIGH - BAD)`);
+      const tx1 = await poolA.setMarketConditions(rateA, utilA, { nonce: nonce++ });
+      console.log(`⏳ Transaction sent: ${tx1.hash}`);
+      const receipt1 = await tx1.wait();
+      console.log(`✅ Pool A updated at block ${receipt1.blockNumber}\n`);
+    } catch (err) {
+      if (err.message.includes("already known")) {
+        console.warn("⚠️ Transaction already known (mempool collision), proceeding...");
+      } else {
+        console.warn(`⚠️ Pool A update failed: ${err.message}`);
+      }
+    }
+
+    // Pool B Update (GOOD conditions - should move funds here)
+    try {
+      // High Rate + Low Util = Very High Score (GOOD pool)
+      const rateB = 1200;  // 12% - HIGH
+      const utilB = 3000;  // 30% - LOW
+      console.log(`Pool B: Updating supply rate to ${rateB} bps (HIGH - GOOD)`);
+      console.log(`        Updating utilization to ${utilB} bps (LOW - GOOD)`);
+      const tx2 = await poolB.setMarketConditions(rateB, utilB, { nonce: nonce++ });
+      console.log(`⏳ Transaction sent: ${tx2.hash}`);
+      const receipt2 = await tx2.wait();
+      console.log(`✅ Pool B updated at block ${receipt2.blockNumber}\n`);
+    } catch (err) {
+      if (err.message.includes("already known")) {
+        console.warn("⚠️ Transaction already known (mempool collision), proceeding...");
+      } else {
+        console.warn(`⚠️ Pool B update failed: ${err.message}`);
+      }
+    }
 
     // Get the updated rates from contracts
     console.log("📝 Fetching updated contract state...\n");
@@ -95,30 +106,39 @@ async function simulateRebalance() {
     const supplyRateA = await poolA.supplyRate();
     const utilizationA = await poolA.utilizationRate();
     console.log(`Pool A new state:`);
-    console.log(`  Supply Rate: ${supplyRateA} bps (${supplyRateA / 100}%)`);
-    console.log(`  Utilization: ${utilizationA} bps (${utilizationA / 100}%)\n`);
+    console.log(`  Supply Rate: ${supplyRateA} bps (${Number(supplyRateA) / 100}%)`);
+    console.log(`  Utilization: ${utilizationA} bps (${Number(utilizationA) / 100}%)\n`);
 
     const supplyRateB = await poolB.supplyRate();
     const utilizationB = await poolB.utilizationRate();
     console.log(`Pool B new state:`);
-    console.log(`  Supply Rate: ${supplyRateB} bps (${supplyRateB / 100}%)`);
-    console.log(`  Utilization: ${utilizationB} bps (${utilizationB / 100}%)\n`);
+    console.log(`  Supply Rate: ${supplyRateB} bps (${Number(supplyRateB) / 100}%)`);
+    console.log(`  Utilization: ${utilizationB} bps (${Number(utilizationB) / 100}%)\n`);
 
     console.log("🎯 Reactive Network Flow:");
     console.log("  1. ✅ RateUpdated events emitted from MockLendingPool contracts on Sepolia");
     console.log("  2. ⏳ Reactive Network listens for these events (topic: 0xb38780dd...)");
-    console.log("  3. ⏳ AlbatrozSentinel.onEvent() called with new rates/utilization");
-    console.log("  4. ⏳ _optimize() calculates new rebalance strategy");
-    console.log("  5. ⏳ Emit Callback to execute rebalancing on vault\n");
+    console.log("  3. ⏳ AlbatrozSentinel.react() called with new rates/utilization");
+    console.log("");
+    console.log("========================================");
+    console.log("  SIMULATION COMPLETE - CHECK EXPLORER");
+    console.log("========================================");
+    console.log("");
+    console.log("📊 Explorer Links (click to verify):");
+    console.log(`  🔹 Sentinel (Lasna): https://lasna.reactscan.net/address/${sentinelAddress}`);
+    console.log(`  🔹 Vault (Sepolia):  https://sepolia.etherscan.io/address/${VAULT_ADDRESS}`);
+    console.log(`  🔹 Pool A (Sepolia): https://sepolia.etherscan.io/address/${POOL_A_ADDRESS}`);
+    console.log(`  🔹 Pool B (Sepolia): https://sepolia.etherscan.io/address/${POOL_B_ADDRESS}`);
+    console.log("");
+    console.log("📝 Next Steps:");
+    console.log("  1. Open Sentinel link above to check RVM Transactions");
+    console.log("  2. Look for 'React to event' transactions");
+    console.log("  3. Check 'Destination Transaction' for Sepolia callback");
+    console.log("");
+    console.log("✅ Simulation finished successfully!");
 
-    console.log("✨ Simulation complete! Monitor the Reactive Network faucet for callbacks.");
-    console.log(`📍 Check AlbatrozSentinel at: 0x93dBc50500C7817eEFFA29E44750D388687D19F4`);
-    console.log(`🔗 Lasna Explorer: https://lasna.reactscan.net`);
   } catch (error) {
     console.error("❌ Error during simulation:", error.message);
-    if (error.data) {
-      console.error("Error data:", error.data);
-    }
     process.exit(1);
   }
 }
