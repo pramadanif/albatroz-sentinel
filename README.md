@@ -251,7 +251,7 @@ graph TB
 
 | Contract | Address | Role |
 |----------|---------|------|
-| **AlbatrozSentinel** | [`0xbC92DAD9027f3bcEC366EaBdC581d484590Ed337`](https://lasna.reactscan.net/address/0xbC92DAD9027f3bcEC366EaBdC581d484590Ed337) | Reactive Smart Contract |
+| **AlbatrozSentinel** | [`0xbC92DAD9027f3bcEC366EaBdC581d484590Ed337`](https://lasna.reactscan.net/address/0xb4d186af4d691de665a36bda1104067e069a15f8/contract/0xbc92dad9027f3bcec366eabdc581d484590ed337) | Reactive Smart Contract |
 
 ---
 
